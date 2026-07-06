@@ -22,6 +22,9 @@ export const metadata: Metadata = {
   description: "Big Buildings Direct — post-STM order progression prototype",
 };
 
+// Prevent build-time prerender from touching Supabase.
+export const dynamic = "force-dynamic";
+
 export default async function RootLayout({
   children,
 }: Readonly<{
