@@ -108,6 +108,8 @@ export type EmailLogEntry = {
   sentAt: string;
   templateKey: string;
   to: string;
+  cc?: string;
+  bcc?: string;
   subject: string;
   body: string;
   triggeredBy: string;
@@ -133,3 +135,43 @@ export function emailTemplateKey(
 ): EmailTemplateKey {
   return `${stage}_${status}` as EmailTemplateKey;
 }
+
+export const ALL_TEMPLATE_KEYS: EmailTemplateKey[] = STAGE_ORDER.flatMap((s) =>
+  (["pending", "waiting", "completed"] as StageStatus[]).map(
+    (st) => emailTemplateKey(s, st),
+  ),
+);
+
+// "to" recipient rules:
+//   customer  → send to order.customerEmail
+//   custom    → use toCustom field (supports comma-separated + {{tokens}})
+export type EmailToType = "customer" | "custom";
+
+export type EmailTemplate = {
+  key: EmailTemplateKey;
+  subject: string;
+  body: string;
+  toType: EmailToType;
+  toCustom: string;
+  cc: string;
+  bcc: string;
+  enabled: boolean;
+  updatedAt?: string;
+  updatedBy?: string;
+};
+
+// Tokens available inside subject/body/cc/bcc. Keep in sync with substitute().
+export const EMAIL_TOKENS: { token: string; label: string }[] = [
+  { token: "{{customerName}}", label: "Customer full name" },
+  { token: "{{customerFirstName}}", label: "Customer first name" },
+  { token: "{{customerEmail}}", label: "Customer email" },
+  { token: "{{customerPhone}}", label: "Customer phone" },
+  { token: "{{orderNumber}}", label: "Order number" },
+  { token: "{{buildingSize}}", label: "Building size (e.g. 40x60x12)" },
+  { token: "{{buildingType}}", label: "Building type" },
+  { token: "{{city}}", label: "City" },
+  { token: "{{state}}", label: "State" },
+  { token: "{{address}}", label: "Address" },
+  { token: "{{manufacturer}}", label: "Manufacturer" },
+  { token: "{{salesRep}}", label: "Sales rep" },
+];

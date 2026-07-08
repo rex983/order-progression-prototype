@@ -48,7 +48,11 @@ export function EmailLog({ emails }: { emails: EmailLogEntry[] }) {
           <DialogHeader>
             <DialogTitle>{open?.subject}</DialogTitle>
             <DialogDescription>
-              To {open?.to} · {open ? formatDateTime(open.sentAt) : ""}
+              To {open?.to}
+              {open?.cc ? ` · CC ${open.cc}` : ""}
+              {open?.bcc ? ` · BCC ${open.bcc}` : ""}
+              {" · "}
+              {open ? formatDateTime(open.sentAt) : ""}
             </DialogDescription>
           </DialogHeader>
           <div className="max-h-[60vh] overflow-y-auto rounded-md border bg-muted/30 p-4">

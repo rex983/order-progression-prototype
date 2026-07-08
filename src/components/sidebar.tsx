@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   ClipboardList,
   Mail,
+  MailOpen,
   Settings,
   type LucideIcon,
 } from "lucide-react";
@@ -41,6 +42,7 @@ export function Sidebar({
       icon: Mail,
       count: waitingCount,
     },
+    { href: "/admin/emails", label: "Email Templates", icon: MailOpen },
     { href: "/admin", label: "Admin", icon: Settings },
   ];
 
@@ -63,8 +65,12 @@ export function Sidebar({
         {items.map((item) => {
           const Icon = item.icon;
           const [base] = item.href.split("?");
+          // Exact match for "/admin" so it doesn't stay lit when we're inside
+          // a subpath like /admin/emails.
           const active =
-            base === "/" ? pathname === "/" : pathname.startsWith(base);
+            base === "/" || base === "/admin"
+              ? pathname === base
+              : pathname.startsWith(base);
           return (
             <Link
               key={item.href}

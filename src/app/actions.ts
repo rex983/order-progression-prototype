@@ -1,16 +1,26 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { renderEmail } from "@/lib/emails";
+import { keyFor, renderTemplate } from "@/lib/emails";
 import {
   addNote,
   appendEmail,
   getOrder,
+  getTemplate,
+  resetAllTemplates,
   resetStore,
+  resetTemplate,
   toggleChecklist,
   updateStage,
+  updateTemplate,
 } from "@/lib/store";
-import type { ChecklistKey, StageKey, StageStatus } from "@/lib/types";
+import type {
+  ChecklistKey,
+  EmailTemplateKey,
+  EmailToType,
+  StageKey,
+  StageStatus,
+} from "@/lib/types";
 
 const BST_ACTOR = "Jordan Pace";
 
@@ -32,16 +42,21 @@ export async function changeStageStatus(input: {
   });
 
   if (input.sendEmail && prev !== input.status) {
-    const rendered = renderEmail(before, input.stage, input.status);
-    await appendEmail(input.orderId, {
-      id: `eml_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-      sentAt: new Date().toISOString(),
-      templateKey: rendered.key,
-      subject: rendered.subject,
-      body: rendered.body,
-      to: before.customerEmail,
-      triggeredBy: `${input.stage} → ${input.status} (by ${BST_ACTOR})`,
-    });
+    const template = await getTemplate(keyFor(input.stage, input.status));
+    if (template.enabled) {
+      const rendered = renderTemplate(template, before);
+      await appendEmail(input.orderId, {
+        id: `eml_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        sentAt: new Date().toISOString(),
+        templateKey: rendered.key,
+        subject: rendered.subject,
+        body: rendered.body,
+        to: rendered.to,
+        cc: rendered.cc || undefined,
+        bcc: rendered.bcc || undefined,
+        triggeredBy: `${input.stage} → ${input.status} (by ${BST_ACTOR})`,
+      });
+    }
   }
 
   revalidatePath("/", "layout");
@@ -75,4 +90,39 @@ export async function addOrderNote(input: {
 export async function resetPrototype() {
   await resetStore();
   revalidatePath("/", "layout");
+}
+
+export async function saveEmailTemplate(input: {
+  key: EmailTemplateKey;
+  subject: string;
+  body: string;
+  toType: EmailToType;
+  toCustom: string;
+  cc: string;
+  bcc: string;
+  enabled: boolean;
+}) {
+  await updateTemplate(input.key, {
+    subject: input.subject,
+    body: input.body,
+    toType: input.toType,
+    toCustom: input.toCustom,
+    cc: input.cc,
+    bcc: input.bcc,
+    enabled: input.enabled,
+    actor: BST_ACTOR,
+  });
+  revalidatePath("/admin/emails");
+  revalidatePath(`/admin/emails/${input.key}`);
+}
+
+export async function resetEmailTemplate(input: { key: EmailTemplateKey }) {
+  await resetTemplate(input.key);
+  revalidatePath("/admin/emails");
+  revalidatePath(`/admin/emails/${input.key}`);
+}
+
+export async function resetAllEmailTemplates() {
+  await resetAllTemplates();
+  revalidatePath("/admin/emails");
 }

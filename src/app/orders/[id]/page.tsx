@@ -12,16 +12,13 @@ import { StagePanel } from "@/components/stage-panel";
 import { ChecklistPanel } from "@/components/checklist-panel";
 import { NotePanel } from "@/components/note-panel";
 import { EmailLog } from "@/components/email-log";
-import { getOrder } from "@/lib/store";
-import { renderEmail } from "@/lib/emails";
+import { getOrder, listTemplates } from "@/lib/store";
+import { renderTemplate } from "@/lib/emails";
 import {
   STAGE_LABEL,
   STAGE_ORDER,
-  type StageStatus,
 } from "@/lib/types";
 import { formatDate } from "@/lib/format";
-
-const STATUSES: StageStatus[] = ["pending", "waiting", "completed"];
 
 export default async function OrderDetailPage({
   params,
@@ -32,12 +29,10 @@ export default async function OrderDetailPage({
   const order = await getOrder(id);
   if (!order) notFound();
 
+  const templates = await listTemplates();
   const previewSubjects: Record<string, string> = {};
-  for (const stage of STAGE_ORDER) {
-    for (const status of STATUSES) {
-      const { subject } = renderEmail(order, stage, status);
-      previewSubjects[`${stage}_${status}`] = subject;
-    }
+  for (const t of templates) {
+    previewSubjects[t.key] = renderTemplate(t, order).subject;
   }
 
   return (

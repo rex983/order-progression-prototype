@@ -10,3 +10,12 @@ create table if not exists public.prototype_order_progression_state (
 
 -- RLS off intentionally; only the server (service role) talks to this table.
 alter table public.prototype_order_progression_state disable row level security;
+
+-- Editable email templates. Single-row JSON blob keyed by template key.
+create table if not exists public.prototype_email_templates (
+  id text primary key,
+  state jsonb not null,
+  updated_at timestamptz not null default now()
+);
+
+alter table public.prototype_email_templates disable row level security;

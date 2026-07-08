@@ -2,15 +2,19 @@ import { createClient } from "@supabase/supabase-js";
 import type {
   ChecklistKey,
   EmailLogEntry,
+  EmailTemplate,
+  EmailTemplateKey,
   Order,
   OrderNote,
   StageKey,
   StageStatus,
 } from "./types";
-import { STAGE_CHECKLIST_MAP, STAGE_ORDER } from "./types";
+import { ALL_TEMPLATE_KEYS, STAGE_CHECKLIST_MAP, STAGE_ORDER } from "./types";
 import { SEED_ORDERS } from "./seed";
+import { defaultTemplate, defaultTemplates } from "./emails";
 
 const TABLE = "prototype_order_progression_state";
+const TEMPLATES_TABLE = "prototype_email_templates";
 const ROW_ID = "main";
 
 type State = { orders: Order[] };
@@ -173,4 +177,89 @@ export async function addNote(
   nextOrders[idx] = updated;
   await writeState({ orders: nextOrders });
   return updated;
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// Email templates — single-row JSON blob keyed by template key.
+// ───────────────────────────────────────────────────────────────────────────
+
+type TemplatesState = { templates: Record<EmailTemplateKey, EmailTemplate> };
+
+async function readTemplates(): Promise<TemplatesState> {
+  const { data, error } = await supabase
+    .from(TEMPLATES_TABLE)
+    .select("state")
+    .eq("id", ROW_ID)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) {
+    const seed: TemplatesState = { templates: defaultTemplates() };
+    await writeTemplates(seed);
+    return seed;
+  }
+  const stored = ((data.state as Partial<TemplatesState>).templates ?? {}) as Partial<
+    Record<EmailTemplateKey, EmailTemplate>
+  >;
+  // Backfill any missing keys with defaults so newly added stage/status combos
+  // show up automatically without needing a manual reset.
+  const merged = { ...defaultTemplates() };
+  for (const k of ALL_TEMPLATE_KEYS) {
+    const s = stored[k];
+    if (s) merged[k] = { ...merged[k], ...s };
+  }
+  return { templates: merged };
+}
+
+async function writeTemplates(state: TemplatesState): Promise<void> {
+  const { error } = await supabase
+    .from(TEMPLATES_TABLE)
+    .upsert({ id: ROW_ID, state, updated_at: new Date().toISOString() });
+  if (error) throw error;
+}
+
+export async function listTemplates(): Promise<EmailTemplate[]> {
+  const { templates } = await readTemplates();
+  return ALL_TEMPLATE_KEYS.map((k) => templates[k]);
+}
+
+export async function getTemplate(
+  key: EmailTemplateKey,
+): Promise<EmailTemplate> {
+  const { templates } = await readTemplates();
+  return templates[key];
+}
+
+export type TemplateUpdate = Partial<
+  Pick<EmailTemplate, "subject" | "body" | "toType" | "toCustom" | "cc" | "bcc" | "enabled">
+> & { actor: string };
+
+export async function updateTemplate(
+  key: EmailTemplateKey,
+  update: TemplateUpdate,
+): Promise<EmailTemplate> {
+  const { templates } = await readTemplates();
+  const { actor, ...changes } = update;
+  const next: EmailTemplate = {
+    ...templates[key],
+    ...changes,
+    updatedAt: new Date().toISOString(),
+    updatedBy: actor,
+  };
+  const nextTemplates = { ...templates, [key]: next };
+  await writeTemplates({ templates: nextTemplates });
+  return next;
+}
+
+export async function resetTemplate(
+  key: EmailTemplateKey,
+): Promise<EmailTemplate> {
+  const { templates } = await readTemplates();
+  const next = defaultTemplate(key);
+  const nextTemplates = { ...templates, [key]: next };
+  await writeTemplates({ templates: nextTemplates });
+  return next;
+}
+
+export async function resetAllTemplates(): Promise<void> {
+  await writeTemplates({ templates: defaultTemplates() });
 }

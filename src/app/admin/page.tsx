@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { ChevronRight, MailOpen } from "lucide-react";
 import { ResetButton } from "@/components/reset-button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -10,6 +12,28 @@ export default function AdminPage() {
           Prototype utilities. Not part of the production system.
         </p>
       </div>
+
+      <Card className="bg-card/40">
+        <CardHeader>
+          <CardTitle className="text-sm">Email templates</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Link
+            href="/admin/emails"
+            className="flex items-center gap-3 rounded-md border bg-card/40 p-3 hover:bg-accent/40 transition"
+          >
+            <MailOpen className="h-4 w-4 text-muted-foreground" />
+            <div className="flex-1">
+              <div className="text-sm font-medium">Manage email templates</div>
+              <div className="text-xs text-muted-foreground">
+                Edit subject, body, CC, BCC + recipients per stage/status.
+              </div>
+            </div>
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          </Link>
+        </CardContent>
+      </Card>
+
       <Card className="bg-card/40">
         <CardHeader>
           <CardTitle className="text-sm">Reset state</CardTitle>
