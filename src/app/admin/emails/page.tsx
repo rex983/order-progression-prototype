@@ -11,6 +11,7 @@ import {
   STAGE_LABEL,
   STAGE_ORDER,
   STATUS_LABEL,
+  TRIGGER_LABEL,
   type EmailTemplate,
   type StageKey,
   type StageStatus,
@@ -34,7 +35,7 @@ function TemplateRow({ t }: { t: EmailTemplate }) {
       className="flex items-center gap-3 rounded-md border bg-card/40 p-3 hover:bg-accent/40 transition"
     >
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <span className="text-xs font-mono text-muted-foreground">
             {t.key}
           </span>
@@ -43,6 +44,11 @@ function TemplateRow({ t }: { t: EmailTemplate }) {
               <EyeOff className="h-3 w-3" /> Disabled
             </Badge>
           )}
+          <Badge variant="secondary" className="text-[10px]">
+            {t.trigger === "delayed"
+              ? `Delayed ${t.delayDays}d`
+              : TRIGGER_LABEL[t.trigger]}
+          </Badge>
         </div>
         <div className="text-sm font-medium mt-0.5 truncate">
           {t.subject || <span className="text-muted-foreground italic">(no subject)</span>}

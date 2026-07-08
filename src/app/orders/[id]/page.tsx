@@ -12,6 +12,8 @@ import { StagePanel } from "@/components/stage-panel";
 import { ChecklistPanel } from "@/components/checklist-panel";
 import { NotePanel } from "@/components/note-panel";
 import { EmailLog } from "@/components/email-log";
+import { ScheduledEmailPanel } from "@/components/scheduled-email-panel";
+import { ManualSendWidget } from "@/components/manual-send-widget";
 import { getOrder, listTemplates } from "@/lib/store";
 import { renderTemplate } from "@/lib/emails";
 import {
@@ -69,6 +71,30 @@ export default async function OrderDetailPage({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
           <StagePanel order={order} previewSubjects={previewSubjects} />
+
+          <Card className="bg-card/40">
+            <CardHeader>
+              <CardTitle className="text-sm">Send email now</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ManualSendWidget orderId={order.id} />
+              <p className="text-[11px] text-muted-foreground mt-2">
+                Fire any template immediately using its current saved version. Useful for a resend or for templates set to <em>Manual only</em>.
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-card/40">
+            <CardHeader>
+              <CardTitle className="text-sm">Scheduled emails</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ScheduledEmailPanel
+                orderId={order.id}
+                scheduled={order.scheduledEmails ?? []}
+              />
+            </CardContent>
+          </Card>
 
           <Card className="bg-card/40">
             <CardHeader>

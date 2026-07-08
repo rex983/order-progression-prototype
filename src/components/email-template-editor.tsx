@@ -2,14 +2,20 @@
 
 import { useMemo, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
-import { RotateCcw, Save } from "lucide-react";
+import { RotateCcw, Save, Send } from "lucide-react";
 import {
   resetEmailTemplate,
   saveEmailTemplate,
+  sendEmailNow,
 } from "@/app/actions";
 import { renderTemplate } from "@/lib/emails";
-import type { EmailTemplate, EmailToType, Order } from "@/lib/types";
-import { EMAIL_TOKENS } from "@/lib/types";
+import type {
+  EmailTemplate,
+  EmailToType,
+  EmailTrigger,
+  Order,
+} from "@/lib/types";
+import { EMAIL_TOKENS, TRIGGER_LABEL } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -45,10 +51,13 @@ export function EmailTemplateEditor({
   const [cc, setCc] = useState(template.cc);
   const [bcc, setBcc] = useState(template.bcc);
   const [enabled, setEnabled] = useState(template.enabled);
+  const [trigger, setTrigger] = useState<EmailTrigger>(template.trigger);
+  const [delayDays, setDelayDays] = useState<number>(template.delayDays);
   const [sampleId, setSampleId] = useState(sampleOrders[0]?.id ?? "");
   const [focusField, setFocusField] = useState<Field>("body");
   const [saving, startSaving] = useTransition();
   const [resetting, startReset] = useTransition();
+  const [sending, startSending] = useTransition();
 
   const refs: Record<Field, React.RefObject<HTMLTextAreaElement | HTMLInputElement | null>> = {
     subject: useRef<HTMLInputElement>(null),
@@ -91,10 +100,12 @@ export function EmailTemplateEditor({
         cc,
         bcc,
         enabled,
+        trigger,
+        delayDays,
       },
       sample,
     );
-  }, [template, subject, body, toType, toCustom, cc, bcc, enabled, sample]);
+  }, [template, subject, body, toType, toCustom, cc, bcc, enabled, trigger, delayDays, sample]);
 
   function insertToken(token: string) {
     const el = refs[focusField].current;
@@ -128,10 +139,27 @@ export function EmailTemplateEditor({
           cc,
           bcc,
           enabled,
+          trigger,
+          delayDays: Number.isFinite(delayDays) && delayDays >= 0 ? Math.floor(delayDays) : 0,
         });
         toast.success("Template saved");
       } catch (e) {
         toast.error(e instanceof Error ? e.message : "Save failed");
+      }
+    });
+  }
+
+  function handleSendNow() {
+    if (!sample) return;
+    if (!confirm(
+      `Send this template right now to order #${sample.orderNumber} (${sample.customerName})?\n\nIt will be logged as a manual send.`,
+    )) return;
+    startSending(async () => {
+      try {
+        await sendEmailNow({ orderId: sample.id, templateKey: template.key });
+        toast.success(`Sent to ${sample.customerName.split(" ")[0]} — logged on the order`);
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Send failed");
       }
     });
   }
@@ -161,10 +189,55 @@ export function EmailTemplateEditor({
                 onChange={(e) => setEnabled(e.target.checked)}
                 className="h-3.5 w-3.5"
               />
-              <span>Enabled (fires on stage change)</span>
+              <span>Enabled</span>
             </label>
           </CardHeader>
           <CardContent className="space-y-4">
+            <div className="rounded-md border bg-muted/20 p-3 space-y-3">
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
+                Trigger
+              </div>
+              <div className="grid gap-3 sm:grid-cols-[220px_1fr]">
+                <div>
+                  <Label className="text-xs">When to send</Label>
+                  <Select value={trigger} onValueChange={(v) => setTrigger(v as EmailTrigger)}>
+                    <SelectTrigger className="mt-1.5">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="on_status_change">
+                        {TRIGGER_LABEL.on_status_change}
+                      </SelectItem>
+                      <SelectItem value="delayed">
+                        {TRIGGER_LABEL.delayed}
+                      </SelectItem>
+                      <SelectItem value="manual">
+                        {TRIGGER_LABEL.manual}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {trigger === "delayed" && (
+                  <div>
+                    <Label className="text-xs">Delay (days after status change)</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      value={delayDays}
+                      onChange={(e) => setDelayDays(Number(e.target.value))}
+                      className="mt-1.5"
+                    />
+                    <p className="text-[10px] text-muted-foreground mt-1">
+                      Cron runs hourly and picks up any queued sends whose delay has elapsed.
+                    </p>
+                  </div>
+                )}
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Template key <span className="font-mono">{template.key}</span> matches the stage/status combo — this rule decides how it fires when that transition happens.
+              </p>
+            </div>
+
             <div className="grid gap-3 sm:grid-cols-[160px_1fr]">
               <div>
                 <Label className="text-xs">Send to</Label>
@@ -261,9 +334,9 @@ export function EmailTemplateEditor({
 
         {preview && sample && (
           <Card className="bg-card/40">
-            <CardHeader className="flex-row items-center justify-between space-y-0">
+            <CardHeader className="flex-row items-center justify-between space-y-0 gap-2">
               <CardTitle className="text-sm">Preview</CardTitle>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap justify-end">
                 <Label className="text-xs text-muted-foreground">Sample order</Label>
                 <Select value={sampleId} onValueChange={setSampleId}>
                   <SelectTrigger className="h-8 min-w-[180px]">
@@ -277,6 +350,16 @@ export function EmailTemplateEditor({
                     ))}
                   </SelectContent>
                 </Select>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleSendNow}
+                  disabled={sending || saving || resetting}
+                  title="Send this template to the sample order (uses last-saved version)"
+                >
+                  <Send className="h-3.5 w-3.5 mr-1.5" />
+                  {sending ? "Sending…" : "Send now"}
+                </Button>
               </div>
             </CardHeader>
             <CardContent className="space-y-2">

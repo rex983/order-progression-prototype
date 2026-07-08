@@ -94,6 +94,22 @@ export type Order = {
   checklist: Record<ChecklistKey, boolean>;
   notes: OrderNote[];
   emails: EmailLogEntry[];
+  scheduledEmails?: ScheduledEmail[];
+};
+
+export type ScheduledEmailStatus = "pending" | "sent" | "canceled";
+
+export type ScheduledEmail = {
+  id: string;
+  templateKey: EmailTemplateKey;
+  triggeredBy: string;   // e.g. "welcome_call → completed (by Jordan Pace)"
+  createdAt: string;
+  sendAt: string;        // ISO timestamp — cron picks up when now >= sendAt
+  status: ScheduledEmailStatus;
+  sentAt?: string;
+  sentEmailId?: string;
+  canceledAt?: string;
+  canceledBy?: string;
 };
 
 export type OrderNote = {
@@ -147,6 +163,18 @@ export const ALL_TEMPLATE_KEYS: EmailTemplateKey[] = STAGE_ORDER.flatMap((s) =>
 //   custom    → use toCustom field (supports comma-separated + {{tokens}})
 export type EmailToType = "customer" | "custom";
 
+// When the email should fire:
+//   on_status_change   → immediately on the matching stage/status transition
+//   delayed            → N days AFTER the matching transition (cron-picked)
+//   manual             → never auto-fires; only via manual send
+export type EmailTrigger = "on_status_change" | "delayed" | "manual";
+
+export const TRIGGER_LABEL: Record<EmailTrigger, string> = {
+  on_status_change: "Immediately on status change",
+  delayed: "Delayed after status change",
+  manual: "Manual only (never auto-fires)",
+};
+
 export type EmailTemplate = {
   key: EmailTemplateKey;
   subject: string;
@@ -156,6 +184,8 @@ export type EmailTemplate = {
   cc: string;
   bcc: string;
   enabled: boolean;
+  trigger: EmailTrigger;
+  delayDays: number;
   updatedAt?: string;
   updatedBy?: string;
 };

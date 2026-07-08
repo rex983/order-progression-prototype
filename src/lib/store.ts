@@ -6,12 +6,13 @@ import type {
   EmailTemplateKey,
   Order,
   OrderNote,
+  ScheduledEmail,
   StageKey,
   StageStatus,
 } from "./types";
 import { ALL_TEMPLATE_KEYS, STAGE_CHECKLIST_MAP, STAGE_ORDER } from "./types";
 import { SEED_ORDERS } from "./seed";
-import { defaultTemplate, defaultTemplates } from "./emails";
+import { defaultTemplate, defaultTemplates, renderTemplate } from "./emails";
 
 const TABLE = "prototype_order_progression_state";
 const TEMPLATES_TABLE = "prototype_email_templates";
@@ -180,6 +181,99 @@ export async function addNote(
 }
 
 // ───────────────────────────────────────────────────────────────────────────
+// Scheduled email queue (per-order JSON list on the order record).
+// ───────────────────────────────────────────────────────────────────────────
+
+export async function enqueueScheduledEmail(
+  orderId: string,
+  scheduled: ScheduledEmail,
+): Promise<void> {
+  const state = await readState();
+  const idx = state.orders.findIndex((o) => o.id === orderId);
+  if (idx === -1) return;
+  const existing = state.orders[idx].scheduledEmails ?? [];
+  const nextOrders = state.orders.slice();
+  nextOrders[idx] = {
+    ...state.orders[idx],
+    scheduledEmails: [...existing, scheduled],
+  };
+  await writeState({ orders: nextOrders });
+}
+
+export async function cancelScheduledEmailInStore(
+  orderId: string,
+  scheduledId: string,
+  actor: string,
+): Promise<void> {
+  const state = await readState();
+  const idx = state.orders.findIndex((o) => o.id === orderId);
+  if (idx === -1) return;
+  const existing = state.orders[idx].scheduledEmails ?? [];
+  const next = existing.map((s) =>
+    s.id === scheduledId && s.status === "pending"
+      ? { ...s, status: "canceled" as const, canceledAt: new Date().toISOString(), canceledBy: actor }
+      : s,
+  );
+  const nextOrders = state.orders.slice();
+  nextOrders[idx] = { ...state.orders[idx], scheduledEmails: next };
+  await writeState({ orders: nextOrders });
+}
+
+// Cron entry point — pick up every pending scheduledEmail whose sendAt has
+// arrived, render the (current) template, and log to that order's email log.
+// Returns a count so the cron endpoint can report on it.
+export async function processDueScheduledEmails(): Promise<{
+  sent: number;
+  skipped: number;
+  scanned: number;
+}> {
+  const state = await readState();
+  const now = Date.now();
+  const { templates } = await readTemplates();
+  let sent = 0;
+  let skipped = 0;
+  let scanned = 0;
+  const nextOrders = state.orders.map((order) => {
+    const q = order.scheduledEmails ?? [];
+    if (q.length === 0) return order;
+    const emails = order.emails.slice();
+    const nextQueue = q.map((s) => {
+      if (s.status !== "pending") return s;
+      scanned++;
+      if (new Date(s.sendAt).getTime() > now) return s;
+      const tmpl = templates[s.templateKey];
+      if (!tmpl || !tmpl.enabled) {
+        skipped++;
+        return { ...s, status: "canceled" as const, canceledAt: new Date().toISOString(), canceledBy: "cron (disabled)" };
+      }
+      const rendered = renderTemplate(tmpl, order);
+      const emailId = `eml_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      emails.push({
+        id: emailId,
+        sentAt: new Date().toISOString(),
+        templateKey: rendered.key,
+        subject: rendered.subject,
+        body: rendered.body,
+        to: rendered.to,
+        cc: rendered.cc || undefined,
+        bcc: rendered.bcc || undefined,
+        triggeredBy: `${s.triggeredBy} · scheduled`,
+      });
+      sent++;
+      return {
+        ...s,
+        status: "sent" as const,
+        sentAt: new Date().toISOString(),
+        sentEmailId: emailId,
+      };
+    });
+    return { ...order, emails, scheduledEmails: nextQueue };
+  });
+  await writeState({ orders: nextOrders });
+  return { sent, skipped, scanned };
+}
+
+// ───────────────────────────────────────────────────────────────────────────
 // Email templates — single-row JSON blob keyed by template key.
 // ───────────────────────────────────────────────────────────────────────────
 
@@ -230,7 +324,10 @@ export async function getTemplate(
 }
 
 export type TemplateUpdate = Partial<
-  Pick<EmailTemplate, "subject" | "body" | "toType" | "toCustom" | "cc" | "bcc" | "enabled">
+  Pick<
+    EmailTemplate,
+    "subject" | "body" | "toType" | "toCustom" | "cc" | "bcc" | "enabled" | "trigger" | "delayDays"
+  >
 > & { actor: string };
 
 export async function updateTemplate(

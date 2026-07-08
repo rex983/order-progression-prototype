@@ -214,6 +214,8 @@ export function defaultTemplate(key: EmailTemplateKey): EmailTemplate {
     cc: d.cc ?? "",
     bcc: d.bcc ?? "",
     enabled: true,
+    trigger: "on_status_change",
+    delayDays: 0,
   };
 }
 
