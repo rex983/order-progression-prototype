@@ -95,6 +95,12 @@ export type Order = {
   notes: OrderNote[];
   emails: EmailLogEntry[];
   scheduledEmails?: ScheduledEmail[];
+  // Free-text so BST can capture whatever the manufacturer + county require
+  // without a schema change. Used to branch template copy in {{#if ...}} blocks
+  // and to route the right checklist link.
+  permitType?: string;      // e.g. "Full building permit", "Zoning only", "None"
+  foundationType?: string;  // e.g. "Concrete slab", "Piers", "Gravel pad", "Asphalt"
+  landPrepStatus?: string;  // e.g. "Not started", "Cleared", "Graded", "Pad poured"
 };
 
 export type ScheduledEmailStatus = "pending" | "sent" | "canceled";
@@ -204,4 +210,7 @@ export const EMAIL_TOKENS: { token: string; label: string }[] = [
   { token: "{{address}}", label: "Address" },
   { token: "{{manufacturer}}", label: "Manufacturer" },
   { token: "{{salesRep}}", label: "Sales rep" },
+  { token: "{{permitType}}", label: "Permit type" },
+  { token: "{{foundationType}}", label: "Foundation type" },
+  { token: "{{landPrepStatus}}", label: "Land prep status" },
 ];

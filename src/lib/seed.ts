@@ -70,6 +70,9 @@ function seedOrder(o: {
   stageOverrides?: Partial<Record<StageKey, StageState>>;
   notes?: OrderNote[];
   emails?: EmailLogEntry[];
+  permitType?: string;
+  foundationType?: string;
+  landPrepStatus?: string;
 }): Order {
   const stages = { ...stagesFromCurrent(o.currentStage), ...(o.stageOverrides ?? {}) };
   const checklist = { ...emptyChecklist(), ...(o.checklistOverrides ?? {}) };
@@ -92,6 +95,9 @@ function seedOrder(o: {
     checklist,
     notes: o.notes ?? [],
     emails: o.emails ?? [],
+    permitType: o.permitType,
+    foundationType: o.foundationType,
+    landPrepStatus: o.landPrepStatus,
   };
 }
 
@@ -277,6 +283,9 @@ export const SEED_ORDERS: Order[] = [
     manufacturer: "American Steel",
     stmDate: "2026-06-25",
     currentStage: "land_prep_permitting",
+    permitType: "Full building permit",
+    foundationType: "Concrete slab",
+    landPrepStatus: "Cleared",
     checklistOverrides: { welcome_call_made: true },
     notes: [
       note(
@@ -491,6 +500,9 @@ export const SEED_ORDERS: Order[] = [
     manufacturer: "SBS",
     stmDate: "2026-06-15",
     currentStage: "ready_for_install",
+    permitType: "None",
+    foundationType: "Gravel pad",
+    landPrepStatus: "Pad poured",
     checklistOverrides: {
       welcome_call_made: true,
       permitting: true,
@@ -652,6 +664,9 @@ export const SEED_ORDERS: Order[] = [
     manufacturer: "Best Choice",
     stmDate: "2026-05-28",
     currentStage: "scheduled",
+    permitType: "Zoning only",
+    foundationType: "Concrete piers",
+    landPrepStatus: "Pad poured",
     checklistOverrides: {
       welcome_call_made: true,
       permitting: true,

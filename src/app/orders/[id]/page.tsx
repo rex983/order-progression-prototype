@@ -141,6 +141,25 @@ export default async function OrderDetailPage({
                   STM date: <strong className="text-foreground">{formatDate(order.stmDate)}</strong>
                 </div>
               </div>
+              {(order.permitType || order.foundationType || order.landPrepStatus) && (
+                <div className="pt-2 border-t space-y-1">
+                  {order.permitType && (
+                    <div className="text-muted-foreground">
+                      Permit: <strong className="text-foreground">{order.permitType}</strong>
+                    </div>
+                  )}
+                  {order.foundationType && (
+                    <div className="text-muted-foreground">
+                      Foundation: <strong className="text-foreground">{order.foundationType}</strong>
+                    </div>
+                  )}
+                  {order.landPrepStatus && (
+                    <div className="text-muted-foreground">
+                      Land prep: <strong className="text-foreground">{order.landPrepStatus}</strong>
+                    </div>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
 

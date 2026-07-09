@@ -240,11 +240,55 @@ export function tokenValues(order: Order): Record<string, string> {
     address: order.address,
     manufacturer: order.manufacturer,
     salesRep: order.salesRep,
+    permitType: order.permitType ?? "",
+    foundationType: order.foundationType ?? "",
+    landPrepStatus: order.landPrepStatus ?? "",
   };
 }
 
+// Evaluate one condition string against the token map.
+//   {{#if field}}                 → truthy check (non-empty string)
+//   {{#if field="value"}}         → equality (case-sensitive)
+//   {{#if field!="value"}}        → inequality
+function evaluateCondition(cond: string, values: Record<string, string>): boolean {
+  const eqMatch = cond.match(/^\s*(\w+)\s*(!?=)\s*"([^"]*)"\s*$/);
+  if (eqMatch) {
+    const [, field, op, expected] = eqMatch;
+    const actual = values[field] ?? "";
+    return op === "=" ? actual === expected : actual !== expected;
+  }
+  const truthy = cond.match(/^\s*(\w+)\s*$/);
+  if (truthy) {
+    const val = values[truthy[1]] ?? "";
+    return val.trim().length > 0;
+  }
+  return false;
+}
+
+// Handle {{#if ...}}...{{else}}...{{/if}} blocks. Non-nested: keep it simple
+// for the prototype — the innermost /if closes the nearest #if. If you nest,
+// authoring gets confusing anyway.
+function resolveConditionals(input: string, values: Record<string, string>): string {
+  const re = /\{\{#if\s+([^}]+)\}\}([\s\S]*?)\{\{\/if\}\}/g;
+  let prev: string;
+  let out = input;
+  // Loop until no more matches; supports sequential blocks and re-scans after
+  // replacement so tokens revealed inside a chosen branch stay intact.
+  do {
+    prev = out;
+    out = out.replace(re, (_m, cond, inner) => {
+      const parts = inner.split(/\{\{else\}\}/);
+      const yes = parts[0] ?? "";
+      const no = parts[1] ?? "";
+      return evaluateCondition(cond, values) ? yes : no;
+    });
+  } while (out !== prev);
+  return out;
+}
+
 export function substitute(input: string, values: Record<string, string>): string {
-  return input.replace(/\{\{\s*(\w+)\s*\}\}/g, (_m, k) => values[k] ?? "");
+  const withConds = resolveConditionals(input, values);
+  return withConds.replace(/\{\{\s*(\w+)\s*\}\}/g, (_m, k) => values[k] ?? "");
 }
 
 export type RenderedEmail = {

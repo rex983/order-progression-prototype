@@ -398,7 +398,7 @@ export function EmailTemplateEditor({
           <CardHeader>
             <CardTitle className="text-sm">Insert token</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2">
+          <CardContent className="space-y-3">
             <p className="text-[11px] text-muted-foreground">
               Click a token to insert it at the cursor in the last field you focused.
               <span className="block mt-1">
@@ -419,6 +419,43 @@ export function EmailTemplateEditor({
                   </div>
                 </button>
               ))}
+            </div>
+            <div className="pt-2 border-t space-y-2">
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
+                Conditional blocks
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Show different copy per manufacturer / permit / foundation:
+              </p>
+              <button
+                type="button"
+                onClick={() =>
+                  insertToken(
+                    `{{#if foundationType="Concrete slab"}}Your slab must be cured before install.{{else}}A gravel pad works for your foundation.{{/if}}`,
+                  )
+                }
+                className="w-full text-left rounded-md border bg-background/40 px-2.5 py-1.5 hover:bg-accent/40 transition"
+              >
+                <div className="font-mono text-[11px]">{`{{#if field="value"}}...{{else}}...{{/if}}`}</div>
+                <div className="text-[10px] text-muted-foreground">Insert an if/else block</div>
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  insertToken(
+                    `{{#if permitType}}Reminder: your {{permitType}} must be approved before we schedule.{{/if}}`,
+                  )
+                }
+                className="w-full text-left rounded-md border bg-background/40 px-2.5 py-1.5 hover:bg-accent/40 transition"
+              >
+                <div className="font-mono text-[11px]">{`{{#if field}}...{{/if}}`}</div>
+                <div className="text-[10px] text-muted-foreground">
+                  Insert a truthy check (renders only when field is set)
+                </div>
+              </button>
+              <p className="text-[10px] text-muted-foreground leading-relaxed">
+                Operators: <code>=</code>, <code>!=</code>. Values are case-sensitive strings in double quotes.
+              </p>
             </div>
           </CardContent>
         </Card>
