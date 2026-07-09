@@ -33,7 +33,7 @@ export const STAGE_DESCRIPTION: Record<StageKey, string> = {
 
 export const STATUS_LABEL: Record<StageStatus, string> = {
   pending: "Pending",
-  waiting: "Waiting on Customer",
+  waiting: "In Progress",
   completed: "Completed",
 };
 

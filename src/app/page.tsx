@@ -78,7 +78,7 @@ export default async function Home() {
               <li>BST opens the order and works the current stage.</li>
               <li>
                 Each stage can be marked <strong>pending</strong>,{" "}
-                <strong>waiting on customer</strong>, or <strong>completed</strong>.
+                <strong>in progress</strong>, or <strong>completed</strong>.
               </li>
               <li>
                 Every status change fires a customer email and ticks the linked checklist item.

@@ -37,7 +37,7 @@ const STATUSES: StageStatus[] = ["pending", "waiting", "completed"];
 
 const STATUS_TITLES: Record<StageStatus, string> = {
   pending: "Mark Pending",
-  waiting: "Mark Waiting on Customer",
+  waiting: "Mark In Progress",
   completed: "Mark Completed",
 };
 

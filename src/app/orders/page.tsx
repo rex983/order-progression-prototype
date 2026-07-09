@@ -47,7 +47,7 @@ export default async function OrdersPage({
       active: stageFilter === s,
     })),
     {
-      label: "Waiting on Customer",
+      label: "In Progress",
       href: "/orders?filter=waiting",
       active: waitingOnly,
     },

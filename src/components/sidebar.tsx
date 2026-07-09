@@ -38,7 +38,7 @@ export function Sidebar({
     },
     {
       href: "/orders?filter=waiting",
-      label: "Waiting on Customer",
+      label: "In Progress",
       icon: Mail,
       count: waitingCount,
     },
